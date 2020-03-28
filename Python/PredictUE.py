@@ -272,13 +272,24 @@ def predict_ue_exp(searches,
     return predict_values
 
 
-# +
+# + {"code_folding": [0]}
 ## predict the UEI using google trends in/out of sample 
 
 ue_exp_idx_prd = predict_ue_exp(np.array(df[sub_searches].dropna(how ='any')),
                                 coefs1)
 ue_exp_idx_prd_index = df[sub_searches].dropna(how ='any').index  # two months in the end are out of sample.
 
+prd_df = pd.DataFrame(ue_exp_idx_prd,
+                      columns = ['ue_exp_idx_prd'],
+                      index = ue_exp_idx_prd_index)
+ 
+## add the predicted uei to the master dataframe 
+
+df = pd.merge(df,
+             prd_df,
+             left_index = True,
+             right_index = True,
+             how = 'outer')
 # -
 
 outsample_time =  datetime.datetime(2020,2,1)
@@ -309,15 +320,12 @@ df.columns
 # \end{eqnarray}
 #
 
+# ### Model 1 for step 2. Use predicted UEI
+
 # +
-## Model 1. Use predicted UEI
-
-
-
-# + {"code_folding": [0]}
-## Model 2. Use realized UEI
+## ols regression
 df['ue_chg'] = df['ue'].diff(periods = 12) ## yoy change of unemployment rate 
-df_short2 = df[['ue_chg','ue_exp_idx']].dropna(how ='any')
+df_short2 = df[['ue_chg','ue_exp_idx_prd']].dropna(how ='any')
 
 ## # of months lag 
 ############################################################
@@ -325,67 +333,142 @@ h = 12  #by default, next month unemployment rate
 #############################################################
 
 Y = np.array(df_short2['ue_chg'][h:])
-X = np.array(df_short2['ue_exp_idx'][:-h])
+X = np.array(df_short2['ue_exp_idx_prd'][:-h])
 X = sm.add_constant(X)
 model2 = sm.OLS(Y,X)
 results2 = model2.fit()
 print(results2.summary())
 
+
 # +
 coefs2 = results2.params
 r2_2 = round(results2.rsquared,3)
 
+print('When using predicted UEI')
 print('Estimated coefficients:')
 print(coefs2)
 
 print('R-squared:')
 print(r2_2)
-# -
 
+
+# +
+# function that predict change in unemployment rate 
+
+def predict_ue(uei,
+               coefs):
+    predict_values = coefs[0] + (coefs[1]*uei.T)
+    return predict_values
+
+
+# + {"code_folding": []}
+## predict the UE changes using predicted UEI 
+
+ue_chg_prd = predict_ue(np.array(df['ue_exp_idx_prd'].dropna(how ='any')),
+                        coefs2)
+ue_chg_index = df['ue_exp_idx_prd'].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df2 = pd.DataFrame(ue_chg_prd,
+                       columns = ['ue_chg_prd'],
+                       index = ue_chg_index)
+df = pd.merge(df,
+              prd_df2,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+
+# +
 fig = plt.figure(figsize = figsize)
-plt.plot(df_short2.index[h:],
-         np.array(df_short2['ue_chg'][h:]), 
+
+plt.plot(ue_chg_index,
+         np.array(df['ue_chg'].loc[ue_chg_index]), 
          '--',
          lw = 2, 
          label = 'realized')
-plt.plot(df_short2.index[:-h],
-         results2.predict(),
+plt.plot(ue_chg_index,
+         ue_chg_prd,
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting YoY changes of unemployment rate using expectations')
+plt.title('Predicting YoY changes of unemployment rate using predicted expectation index')
+plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
-plt.savefig('figures/ue_change_predict')
+plt.savefig('figures/ue_change_predict_predicted_uei')
+# -
 
-# + {"code_folding": [], "cell_type": "markdown"}
-# ## 2-step prediction of the unemployment rate
+# ### Model 2 for step 2. Use realized UEI
 
 # + {"code_folding": []}
-searches = ['Search: \"unemployment insurance\"',
-            'Search: \"unemployment\"',
-            'Search: \"unemployment office\"',
-            'Search: \"file for unemployment\"']
+## ols regression
 
-## predict unemployment exp index 
-ue_exp_idx_predicted = coefs1[0] + (coefs1[1]*df[searches[0]]
-                                   + coefs1[2]*df[searches[1]]
-                                  # + coefs1[3]*df[searches[2]]
-                                  )
-# -
+df['ue_chg'] = df['ue'].diff(periods = 12) ## yoy change of unemployment rate 
+df_short3 = df[['ue_chg','ue_exp_idx']].dropna(how ='any')
 
-ue_exp_idx_predicted.tail().plot(title = 'predicted unemployment expectation index')
-plt.savefig('figures/ue_exp_idx_predict_recent')
+## # of months lag 
+############################################################
+h = 12  #by default, next month unemployment rate 
+#############################################################
 
-## predict unemployment changes 
-ue_ch_predicted = coefs2[0] + coefs2[1]*ue_exp_idx_predicted
+Y = np.array(df_short3['ue_chg'][h:])
+X = np.array(df_short3['ue_exp_idx'][:-h])
+X = sm.add_constant(X)
+model3 = sm.OLS(Y,X)
+results3 = model3.fit()
+print(results3.summary())
 
 # +
-## change in unemployment rate 
+coefs3 = results3.params
+r2_3 = round(results3.rsquared,3)
 
-ue_ch_predicted.tail()
+print('When using realized  UEI')
+print('Estimated coefficients:')
+print(coefs3)
+
+print('R-squared:')
+print(r2_3)
+
+# +
+## predict the UE changes using realized UEI 
+
+ue_chg_prd2 = predict_ue(np.array(df['ue_exp_idx_prd'].dropna(how ='any')),
+                        coefs3)
+
+ue_chg_index2 = df['ue_exp_idx_prd'].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df3 = pd.DataFrame(ue_chg_prd2,
+                       columns = ['ue_chg_prd2'],
+                       index = ue_chg_index2)
+df = pd.merge(df,
+              prd_df3,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
 # -
 
-ue_ch_predicted.tail().plot(title = 'predicted change in unemployment rate (in percentage points)')
+fig = plt.figure(figsize = figsize)
+plt.plot(ue_chg_index2,
+         np.array(df['ue_chg'].loc[ue_chg_index2]),
+         '--',
+         lw = 2, 
+         label = 'realized')
+plt.plot(ue_chg_index2,
+         ue_chg_prd2,
+         'r-',
+         lw = 2,
+         label='prediction')
+plt.title('Predicting YoY changes of unemployment rate using realized expectation index')
+plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.legend(loc = 2)
+plt.savefig('figures/ue_change_predict_realized_uei')
+
+# + {"code_folding": [], "cell_type": "markdown"}
+# ## Zoom-in the recent sample 
+# -
+
+df['ue_exp_idx_prd'].tail().plot(title = 'predicted change in UEI')
+plt.savefig('figures/ue_exp_idx_predict_recent')
+
+df['ue_chg_prd'].tail().plot(title = 'predicted YoY change in unemployment rate')
 plt.savefig('figures/ue_change_predict_recent')
 
 # ## Retail and unemployment expectations 
