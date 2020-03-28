@@ -6,12 +6,14 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.4'
-#       jupytext_version: 1.2.3
+#       jupytext_version: 1.2.1
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
+
+pip install predictit
 
 import pandas_datareader.data as web
 import datetime
@@ -32,6 +34,8 @@ fontsize = 10
 # ## Import google trends data and Michigan data 
 
 # + {"code_folding": []}
+# CDC to WangTao: Add "unemployment"
+
 ## google search 
 ue_search = pd.read_excel('../Data/UEGoogle.xls')
 ue_search.index = ue_search['Month']
@@ -161,11 +165,11 @@ plt.savefig('figures/all')
 #
 #
 # \begin{eqnarray}
-# \underbrace{UEI_{t}}_{\text{Unemployment expectation index}} = \alpha + \sum^3_{k=1}\beta_k \text{Search}_{k,t} + \epsilon_{t}
+# \underbrace{\texttt{UEI}_{t}}_{\text{Unemployment expectation index}} = \alpha + \sum^2_{k=1}\beta_k \texttt{Search}_{k,t} + \epsilon_{t}
 # \end{eqnarray}
 #
-# - $UEI$: unemployment expectation index
-# - $Search_{k,t}$: google search index for querry $k$, e.g. "unemployment insurance", "unemployment office", "file for unemployment", etc. Note that since each google search query taken from Google trends is normalized by its own historical peak value, the level of the index can not be directly comparable across different queries. All indicies should be normalized by their initial value at the first period of the sample. 
+# - $\texttt{UEI}$: unemployment expectation index
+# - $\texttt{Search}_{k,t}$: google search index for query $k$, e.g. "unemployment insurance", "unemployment office", etc. All indicies are normalized by their initial value at the first period of the sample. 
 
 uedf = uedf.rename(columns = {'UNRATE':'ue',
                               'UMEX_R':'ue_exp_idx'})
@@ -183,29 +187,35 @@ results = model.fit()
 print(results.summary())
 # -
 
+print('Coefficients of interest:')
+coefs1 = results.params
+print(coefs1)
+
 fig = plt.figure(figsize = figsize)
 plt.plot(uedf_short1.index,
-         uedf_short1['ue_exp_idx'], lw = 2, label = 'realized')
+         uedf_short1['ue_exp_idx'], lw = 2, label = 'UEI')
 plt.plot(uedf_short1.index,
-         results.predict(),'r--',lw = 2,label='prediction')
+         results.predict(),'r--',lw = 2,label=r'$\widehat{UEI}$')
 plt.title('Predicting unemployment expectation using google searches')
 plt.legend(loc = 2)
 plt.savefig('figures/ue_exp_idx_predict')
-
-print('Estimated coefficients are')
-coefs1 = results.params
-print(coefs1)
+# Make this an out of sample plot (for the predicted)
 
 uedf.columns
 
 # ### Step 2.  predict future realized unemployment rate change using expectations 
 
 # \begin{eqnarray}
-# U_{t+h} - U_{t+h-1} = u + UEI_{t} + \eta_{t+2}
+# \texttt{U}_{t+h} - \texttt{U}_{t} & = & a_{0}+ a_{1}\widehat{\texttt{UEI}}_{t} + \eta_{t}
 # \end{eqnarray}
 #
-# - $U_{t+h}$: h-month-ahead realized unemployment rate, h = 1 by default. change h to predict for different horizons 
-# - $UEI_{t}$: unemployment rate expectation index at time $t$ 
+# - $\texttt{U}_{t+h}$: h-month-ahead realized unemployment rate, h = 12 by default. change h to predict for different horizons 
+# - $\widehat{\texttt{UEI}}_{t}$: predicted unemployment rate expectation index at time $t$ 
+#
+# \begin{eqnarray}
+# \widehat{\texttt{U}}_{t+h} &= & \hat{a}_{0}+ \hat{a}_{1}\widehat{\texttt{UEI}}_{t} + \texttt{U}_{t} 
+# \end{eqnarray}
+#
 
 # +
 uedf['ue_chg'] = uedf['ue'].diff(periods = 1) ## monthly change of unemployment rate 
@@ -273,4 +283,16 @@ ue_ch_predicted.tail()
 ue_ch_predicted.tail().plot(title = 'predicted change in unemployment rate (in percentage points)')
 plt.savefig('figures/ue_change_predict_recent')
 
+#
+# \begin{eqnarray}
+# \newcommand{\Retail}{\texttt{log RS}}
+# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \hat{U}_{t+12} & \text{Over history to 2019-JAN}
+# \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2019-JAN}
+# \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \widehat{\texttt{UEI}}_{t}  &\text{Using measured UEI data through its end, then forecasted UEI for last couple of months}
+# \end{eqnarray}
 
+# +
+# You want Retail Sales Ex motor vehicles
+# And you need to get the level of the PCE deflator to turn it into something like a "real" index
+
+https://www.census.gov/retail/marts/www/adv44w72.txt
