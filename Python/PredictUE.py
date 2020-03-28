@@ -40,10 +40,12 @@ ue_search.index = pd.DatetimeIndex(pd.to_datetime(ue_search.index,
                                   freq='infer')
 ue_search.index.name = None
 
-ue_search = ue_search.rename(columns = {'unemployment insurance: (United States)':'Search: \"unemployment insurance\"',
+ue_search = ue_search.rename(columns = 
+                             {'unemployment insurance: (United States)':'Search: \"unemployment insurance\"',
                              'unemployment office: (United States)':'Search: \"unemployment office\"',
                              'file for unemployment: (United States)':'Search: \"file for unemployment\"',
-                             'unemployment: (United States)':'Search: \"unemployment\"'          })
+                             'unemployment: (United States)':'Search: \"unemployment\"'}
+                            )
 
 
 # +
@@ -156,7 +158,7 @@ plt.savefig('figures/retail')
 
 # ## Combine all series 
 
-# +
+# + {"code_folding": [0, 7, 13]}
 temp = pd.merge(ue_search,
                 ue_exp,
                 left_index = True,
@@ -182,7 +184,9 @@ df = df.rename(columns = {'UNRATE':'ue',
 
 df.columns
 
-# +
+# + {"code_folding": [0]}
+## plot all series 
+
 fig, ax = plt.subplots(figsize = figsize)
 ax2 = ax.twinx()
 ax.plot(df.index,
@@ -246,11 +250,16 @@ X = sm.add_constant(X)
 model = sm.OLS(Y,X)
 results = model.fit()
 print(results.summary())
-# -
+
+# +
+coefs1 = results.params
+r2_1 = round(results.rsquared,3)
 
 print('Coefficients of interest:')
-coefs1 = results.params
 print(coefs1)
+
+print('R-squared:')
+print(r2_1)
 
 
 # + {"code_folding": [0]}
@@ -264,23 +273,27 @@ def predict_ue_exp(searches,
 
 
 # +
-ue_exp_idx_prd  = predict_ue_exp(np.array(df[sub_searches].dropna(how='any')),
-                          coefs1)
+## predict the UEI using google trends in/out of sample 
 
-## need to give the right time index again. 
+ue_exp_idx_prd = predict_ue_exp(np.array(df[sub_searches].dropna(how ='any')),
+                                coefs1)
+ue_exp_idx_prd_index = df[sub_searches].dropna(how ='any').index  # two months in the end are out of sample.
+
 # -
 
+outsample_time =  datetime.datetime(2020,2,1)
 fig = plt.figure(figsize = figsize)
-plt.plot(uedf_short1.index,
-         uedf_short1['ue_exp_idx'], lw = 2, label = 'UEI')
-plt.plot(uedf_short1.index,
-         results.predict(),'r--',lw = 2,label=r'$\widehat{UEI}$')
+plt.plot(df_short1.index,
+         df_short1['ue_exp_idx'], lw = 2, label = 'UEI')
+plt.plot(ue_exp_idx_prd_index,
+         ue_exp_idx_prd,'r--',lw = 2,label=r'$\widehat{UEI}$')
 plt.title('Predicting unemployment expectation using google searches')
+plt.text(outsample_time, 80, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/ue_exp_idx_predict')
 # Make this an out of sample plot (for the predicted)
 
-uedf.columns
+df.columns
 
 # ### Step 2.  predict future realized unemployment rate change using expectations 
 
@@ -297,53 +310,66 @@ uedf.columns
 #
 
 # +
-uedf['ue_chg'] = uedf['ue'].diff(periods = 1) ## monthly change of unemployment rate 
-uedf_short2 = uedf[['ue_chg','ue_exp_idx']].dropna(how ='any')
+## Model 1. Use predicted UEI
+
+
+
+# + {"code_folding": [0]}
+## Model 2. Use realized UEI
+df['ue_chg'] = df['ue'].diff(periods = 12) ## yoy change of unemployment rate 
+df_short2 = df[['ue_chg','ue_exp_idx']].dropna(how ='any')
 
 ## # of months lag 
 ############################################################
-h = 1  #by default, next month unemployment rate 
+h = 12  #by default, next month unemployment rate 
 #############################################################
 
-Y = np.array(uedf_short2['ue_chg'][h:])
-X = np.array(uedf_short2['ue_exp_idx'][:-h])
+Y = np.array(df_short2['ue_chg'][h:])
+X = np.array(df_short2['ue_exp_idx'][:-h])
 X = sm.add_constant(X)
 model2 = sm.OLS(Y,X)
 results2 = model2.fit()
 print(results2.summary())
+
+# +
+coefs2 = results2.params
+r2_2 = round(results2.rsquared,3)
+
+print('Estimated coefficients:')
+print(coefs2)
+
+print('R-squared:')
+print(r2_2)
 # -
 
-coefs2 = results2.params
-print('Estimated coefficients are')
-coefs2
-
 fig = plt.figure(figsize = figsize)
-plt.plot(uedf_short2.index[h:],
-         np.array(uedf_short2['ue_chg'][h:]), 
+plt.plot(df_short2.index[h:],
+         np.array(df_short2['ue_chg'][h:]), 
          '--',
          lw = 2, 
          label = 'realized')
-plt.plot(uedf_short2.index[:-h],
+plt.plot(df_short2.index[:-h],
          results2.predict(),
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting unemployment changes using expectations')
+plt.title('Predicting YoY changes of unemployment rate using expectations')
 plt.legend(loc = 2)
 plt.savefig('figures/ue_change_predict')
 
-# + {"code_folding": []}
-## 2-step procedure to predict the unemployment rate change in March 2020 and onward
+# + {"code_folding": [], "cell_type": "markdown"}
+# ## 2-step prediction of the unemployment rate
 
 # + {"code_folding": []}
 searches = ['Search: \"unemployment insurance\"',
+            'Search: \"unemployment\"',
             'Search: \"unemployment office\"',
             'Search: \"file for unemployment\"']
 
 ## predict unemployment exp index 
-ue_exp_idx_predicted = coefs1[0] + (coefs1[1]*uedf[searches[0]]
-                                   + coefs1[2]*uedf[searches[1]]
-                                  # + coefs1[3]*uedf[searches[2]]
+ue_exp_idx_predicted = coefs1[0] + (coefs1[1]*df[searches[0]]
+                                   + coefs1[2]*df[searches[1]]
+                                  # + coefs1[3]*df[searches[2]]
                                   )
 # -
 
@@ -362,6 +388,8 @@ ue_ch_predicted.tail()
 ue_ch_predicted.tail().plot(title = 'predicted change in unemployment rate (in percentage points)')
 plt.savefig('figures/ue_change_predict_recent')
 
+# ## Retail and unemployment expectations 
+
 #
 # \begin{eqnarray}
 # \newcommand{\Retail}{\texttt{log RS}}
@@ -369,9 +397,3 @@ plt.savefig('figures/ue_change_predict_recent')
 # \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2019-JAN}
 # \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \widehat{\texttt{UEI}}_{t}  &\text{Using measured UEI data through its end, then forecasted UEI for last couple of months}
 # \end{eqnarray}
-
-# +
-# You want Retail Sales Ex motor vehicles
-# And you need to get the level of the PCE deflator to turn it into something like a "real" index
-
-https://www.census.gov/retail/marts/www/adv44w72.txt
