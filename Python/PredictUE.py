@@ -6,20 +6,17 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.4'
-#       jupytext_version: 1.2.1
+#       jupytext_version: 1.2.3
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
 
-pip install predictit
-
 import pandas_datareader.data as web
 import datetime
 #from pytrends.request import TrendReq
 import matplotlib.pyplot as plt
-import predictit
 import requests
 import pandas as pd 
 import io
@@ -28,14 +25,12 @@ import statsmodels.api as sm
 from IPython.display import display, Markdown, Latex
 
 
-figsize = (8,5)
+figsize = (12,5)
 fontsize = 10
 
 # ## Import google trends data and Michigan data 
 
 # + {"code_folding": []}
-# CDC to WangTao: Add "unemployment"
-
 ## google search 
 ue_search = pd.read_excel('../Data/UEGoogle.xls')
 ue_search.index = ue_search['Month']
@@ -47,13 +42,15 @@ ue_search.index.name = None
 
 ue_search = ue_search.rename(columns = {'unemployment insurance: (United States)':'Search: \"unemployment insurance\"',
                              'unemployment office: (United States)':'Search: \"unemployment office\"',
-                             'file for unemployment: (United States)':'Search: \"file for unemployment\"'})
+                             'file for unemployment: (United States)':'Search: \"file for unemployment\"',
+                             'unemployment: (United States)':'Search: \"unemployment\"'          })
 
 
 # +
 searches = ['Search: \"unemployment insurance\"',
-                'Search: \"unemployment office\"',
-                'Search: \"file for unemployment\"']
+            'Search: \"unemployment\"',
+            'Search: \"unemployment office\"',
+            'Search: \"file for unemployment\"']
 
 ##########################################################
 sub_searches = searches[0:2]
@@ -102,26 +99,62 @@ plt.savefig('figures/ue_exp_idx')
 
 ue_exp.tail()
 
-# ## Unemployement rate 
+# ## Unemployement rate
 
-# +
 start = datetime.datetime(1960, 1, 30)
 end = datetime.datetime(2020, 3, 30)
-
 ue = web.DataReader('UNRATE', 'fred', start, end)
-# -
+
+ue.index = pd.DatetimeIndex(pd.to_datetime(ue.index,
+                                           format = '%Y-%m-%d'),
+                                  freq = 'infer')
+ue.index.name = None
 
 ue.plot(lw = 3,
         figsize = figsize,
         title = 'unemployment rate')
 plt.savefig('figures/ue')
 
-ue.index = pd.DatetimeIndex(pd.to_datetime(ue_exp.index,
-                                               format = '%Y-%m-%d'),
-                                  freq = 'infer')
-ue.index.name = None
+# ## Retail series (excluding vehicles and gas) 
 
-# ## Combine 
+# + {"code_folding": [0]}
+## downloading data from fred 
+
+retail = web.DataReader('MARTSSM44W72USS', 'fred', start, end)
+pce_idx = web.DataReader('PCEPI', 'fred', start, end)
+
+retail.index = pd.DatetimeIndex(pd.to_datetime(retail.index,
+                                               format = '%Y-%m-%d'),
+                                freq = 'MS')
+
+retail = retail.rename(columns={'MARTSSM44W72USS':'retail'})
+
+pce_idx.index = pd.DatetimeIndex(pd.to_datetime(pce_idx.index,
+                                               format = '%Y-%m-%d'),
+                                freq = 'infer')
+retail.index.name = None
+pce_idx.index.name = None
+
+## converting from nominal to real  
+
+retail_pce = pd.merge(retail,
+                      pce_idx,
+                      left_index = True,
+                      right_index = True)
+# -
+
+retail_pce['deflator'] = retail_pce['PCEPI']/retail_pce['PCEPI'][0]
+retail_pce['retail_real'] = retail_pce['retail']/retail_pce['deflator']
+retail_pce['lretail_real'] = np.log(retail_pce['retail_real'])
+retail_pce['retail_yoy'] = retail_pce['lretail_real'].diff(periods = 12)*100
+retail = retail_pce['retail_yoy']
+
+retail.plot(lw = 3,
+        figsize = figsize,
+        title = 'retail growth (YoY)')
+plt.savefig('figures/retail')
+
+# ## Combine all series 
 
 # +
 temp = pd.merge(ue_search,
@@ -136,25 +169,56 @@ uedf = pd.merge(temp,
                left_index = True,
                right_index = True,
                 how = 'outer')
+
+df = pd.merge(uedf,
+              retail,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
 # -
 
-uedf.columns
+df = df.rename(columns = {'UNRATE':'ue',
+                          'UMEX_R':'ue_exp_idx'})
+
+df.columns
 
 # +
 fig, ax = plt.subplots(figsize = figsize)
 ax2 = ax.twinx()
-ax.plot(uedf.index,uedf['UNRATE'],lw =2, label = 'unemployment rate')
-ax2.plot(uedf.index,uedf['UMEX_R'],'r--',lw = 2, label = 'unemployment expectation index')
-ax2.plot(uedf.index,uedf['Search: \"unemployment insurance\"'],'k-.',lw = 2, label = 'google search: unemployment insurance')
-ax2.plot(uedf.index,uedf['Search: \"unemployment office\"'],'g-.',lw = 1, label = 'google search: unemployment office')
-#ax2.plot(uedf.index,uedf['Search: \"file for unemployment\"'],'g-.',lw = 1, label = 'google search: file for unemployment')
+ax.plot(df.index,
+        df['ue'],
+        lw =2, 
+        label = 'unemployment rate')
+
+ax.plot(df.index,
+        df['retail_yoy'],
+        'b-',
+        lw =2, 
+        label = 'retail yoy')
+
+ax2.plot(df.index,
+         df['ue_exp_idx'],'r--',
+         lw = 2, 
+         label = 'unemployment expectation index')
+ax2.plot(df.index,
+         df['Search: \"unemployment insurance\"'],
+         'k-.',
+         lw = 2, 
+         label = 'google search: unemployment insurance')
+ax2.plot(df.index,
+         df['Search: \"unemployment\"'],
+         'g-.',
+         lw = 2, 
+         label = 'google search: unemployment')
+
+#ax2.plot(df.index,df['Search: \"file for unemployment\"'],'g-.',lw = 1, label = 'google search: file for unemployment')
 ax.set_xlabel("month",fontsize = fontsize)
 ax.set_ylabel('%',fontsize = fontsize)
 ax2.set_ylabel('index (%)',fontsize = fontsize)
 
 ax.legend(loc = 0,
           fontsize = fontsize)
-ax2.legend(loc = 2,
+ax2.legend(loc = 3,
           fontsize = fontsize)
 plt.savefig('figures/all')
 # -
@@ -171,16 +235,13 @@ plt.savefig('figures/all')
 # - $\texttt{UEI}$: unemployment expectation index
 # - $\texttt{Search}_{k,t}$: google search index for query $k$, e.g. "unemployment insurance", "unemployment office", etc. All indicies are normalized by their initial value at the first period of the sample. 
 
-uedf = uedf.rename(columns = {'UNRATE':'ue',
-                              'UMEX_R':'ue_exp_idx'})
-
 # +
 vars_reg = sub_searches + ['ue_exp_idx']
 
-uedf_short1 = uedf[vars_reg].dropna(how ='any')
+df_short1 = df[vars_reg].dropna(how ='any')
 
-Y = uedf_short1[['ue_exp_idx']]
-X = uedf_short1[sub_searches]
+Y = df_short1[['ue_exp_idx']]
+X = df_short1[sub_searches]
 X = sm.add_constant(X)
 model = sm.OLS(Y,X)
 results = model.fit()
@@ -190,6 +251,24 @@ print(results.summary())
 print('Coefficients of interest:')
 coefs1 = results.params
 print(coefs1)
+
+
+# + {"code_folding": [0]}
+def predict_ue_exp(searches,
+                   coefs):
+    predict_values = coefs[0] + (coefs[1]*searches.T[0]  # important to transform the matrix
+                                 + coefs[2]*searches.T[1]
+                                 # + coefs1[3]*uedf[searches[2]]
+                                )
+    return predict_values
+
+
+# +
+ue_exp_idx_prd  = predict_ue_exp(np.array(df[sub_searches].dropna(how='any')),
+                          coefs1)
+
+## need to give the right time index again. 
+# -
 
 fig = plt.figure(figsize = figsize)
 plt.plot(uedf_short1.index,
