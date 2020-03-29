@@ -480,3 +480,77 @@ plt.savefig('figures/ue_change_predict_recent')
 # \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2019-JAN}
 # \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \widehat{\texttt{UEI}}_{t}  &\text{Using measured UEI data through its end, then forecasted UEI for last couple of months}
 # \end{eqnarray}
+#
+# where 
+#   - $\texttt{log RS}$ is retail sales excluding vehicles and gas
+
+# +
+## retail and unemployment rate changes 
+
+## ols regression
+df_short4 = df[['retail_yoy','ue_chg']].dropna(how ='any')
+
+Y = np.array(df_short4['retail_yoy'])
+X = np.array(df_short4['ue_chg'])
+X = sm.add_constant(X)
+model4 = sm.OLS(Y,X)
+results4 = model4.fit()
+print(results4.summary())
+
+
+# +
+coefs4 = results4.params
+r2_4 = round(results4.rsquared,3)
+
+print('When using realized  UEI')
+print('Estimated coefficients:')
+print(coefs4)
+
+print('R-squared:')
+print(r2_4)
+
+# +
+## retail and unemployment and UEI  
+
+
+## ols regression
+df_short5 = df[['retail_yoy','ue_exp_idx']].dropna(how ='any')
+
+## # of months lag 
+############################################################
+h = 12  #by default, next month unemployment rate 
+#############################################################
+
+Y = np.array(df_short5['retail_yoy'][h:])
+X = np.array(df_short5['ue_exp_idx'][:-h])
+X = sm.add_constant(X)
+model5 = sm.OLS(Y,X)
+results5 = model5.fit()
+print(results5.summary())
+
+# +
+coefs5 = results5.params
+r2_5 = round(results4.rsquared,3)
+
+print('When using realized  UEI')
+print('Estimated coefficients:')
+print(coefs5)
+
+print('R-squared:')
+print(r2_5)
+
+# + {"code_folding": [0]}
+## retail and unemployment and predicted UEI  
+
+## retail and unemployment and UEI  
+
+
+## ols regression
+df_short6 = df[['retail_yoy','ue_exp_idx_prd']].dropna(how ='any')
+
+Y = np.array(df_short6['retail_yoy'][h:])
+X = np.array(df_short6['ue_exp_idx_prd'][:-h])
+X = sm.add_constant(X)
+model6 = sm.OLS(Y,X)
+results6 = model6.fit()
+print(results6.summary())
