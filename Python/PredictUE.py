@@ -177,14 +177,15 @@ df = pd.merge(uedf,
               left_index = True,
               right_index = True,
               how = 'outer')
-# -
 
+# + {"code_folding": []}
 df = df.rename(columns = {'UNRATE':'ue',
                           'UMEX_R':'ue_exp_idx'})
+# -
 
 df.columns
 
-# + {"code_folding": [0]}
+# + {"code_folding": []}
 ## plot all series 
 
 fig, ax = plt.subplots(figsize = figsize)
@@ -272,7 +273,7 @@ def predict_ue_exp(searches,
     return predict_values
 
 
-# + {"code_folding": [0]}
+# + {"code_folding": []}
 ## predict the UEI using google trends in/out of sample 
 
 ue_exp_idx_prd = predict_ue_exp(np.array(df[sub_searches].dropna(how ='any')),
@@ -299,7 +300,7 @@ plt.plot(df_short1.index,
 plt.plot(ue_exp_idx_prd_index,
          ue_exp_idx_prd,'r--',lw = 2,label=r'$\widehat{UEI}$')
 plt.title('Predicting unemployment expectation using google searches')
-plt.text(outsample_time, 80, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.text(outsample_time, 80, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/ue_exp_idx_predict')
 # Make this an out of sample plot (for the predicted)
@@ -391,7 +392,7 @@ plt.plot(ue_chg_index,
          lw = 2,
          label='prediction')
 plt.title('Predicting YoY changes of unemployment rate using predicted expectation index')
-plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.text(outsample_time, 1, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/ue_change_predict_predicted_uei')
 # -
@@ -473,12 +474,11 @@ plt.savefig('figures/ue_change_predict_recent')
 
 # ## Retail and unemployment expectations 
 
+# ### Model 1. 
 #
 # \begin{eqnarray}
 # \newcommand{\Retail}{\texttt{log RS}}
 # \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \hat{U}_{t+12} & \text{Over history to 2019-JAN}
-# \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2019-JAN}
-# \\ \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \widehat{\texttt{UEI}}_{t}  &\text{Using measured UEI data through its end, then forecasted UEI for last couple of months}
 # \end{eqnarray}
 #
 # where 
@@ -508,6 +508,57 @@ print(coefs4)
 
 print('R-squared:')
 print(r2_4)
+
+
+# -
+
+def predict_rs_yoy(ue_or_exp,
+                  coefs):
+    predict_values = coefs[0] + (coefs[1]*ue_or_exp.T)
+    return predict_values
+
+
+# +
+## predict the UE changes using change in UE
+
+rs_yoy_ue_prd = predict_rs_yoy(np.array(df['ue_chg'].dropna(how ='any')),
+                               coefs4)
+rs_yoy_index = df['ue_chg'].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df4 = pd.DataFrame(rs_yoy_ue_prd,
+                       columns = ['rs_yoy_ue_prd'],
+                       index = rs_yoy_index)
+df = pd.merge(df,
+              prd_df4,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+# -
+
+fig = plt.figure(figsize = figsize)
+plt.plot(rs_yoy_index,
+         np.array(df['retail_yoy'].loc[rs_yoy_index]),
+         '--',
+         lw = 2, 
+         label = 'realized')
+plt.plot(rs_yoy_index,
+         rs_yoy_ue_prd,
+         'r-',
+         lw = 2,
+         label='prediction')
+plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.legend(loc = 2)
+plt.savefig('figures/rs_change_predict_realized_uei')
+
+# ### Model 2
+#
+#
+# \begin{eqnarray}
+# \newcommand{\Retail}{\texttt{log RS}}
+# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2019-JAN}
+# \end{eqnarray}
+#
+#
 
 # +
 ## retail and unemployment and UEI  
@@ -539,6 +590,45 @@ print(coefs5)
 print('R-squared:')
 print(r2_5)
 
+# +
+## predict the UE changes using realized UEI 
+
+rs_yoy_uei_prd = predict_rs_yoy(np.array(df['ue_exp_idx'].dropna(how ='any')),
+                                coefs5)
+rs_yoy_index2 = df['ue_exp_idx'].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df5 = pd.DataFrame(rs_yoy_uei_prd,
+                       columns = ['rs_yoy_uei_prd'],
+                       index = rs_yoy_index2)
+df = pd.merge(df,
+              prd_df5,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+# -
+
+fig = plt.figure(figsize = figsize)
+plt.plot(rs_yoy_index2,
+         np.array(df['retail_yoy'].loc[rs_yoy_index2]),
+         '--',
+         lw = 2, 
+         label = 'realized')
+plt.plot(rs_yoy_index2,
+         rs_yoy_uei_prd,
+         'r-',
+         lw = 2,
+         label='prediction')
+plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.legend(loc = 2)
+plt.savefig('figures/rs_change_predict_realized_uei')
+
+# ### Model 3 
+#
+# \begin{eqnarray}
+# \newcommand{\Retail}{\texttt{log RS}}
+# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \widehat{\texttt{UEI}}_{t}  &\text{Using measured UEI data through its end, then forecasted UEI for last couple of months}
+# \end{eqnarray}
+
 # + {"code_folding": [0]}
 ## retail and unemployment and predicted UEI  
 
@@ -554,3 +644,46 @@ X = sm.add_constant(X)
 model6 = sm.OLS(Y,X)
 results6 = model6.fit()
 print(results6.summary())
+
+# +
+coefs6 = results6.params
+r2_6 = round(results6.rsquared,3)
+
+print('When using realized  UEI')
+print('Estimated coefficients:')
+print(coefs6)
+
+print('R-squared:')
+print(r2_6)
+
+# +
+## predict the UE changes using realized UEI 
+
+rs_yoy_hat_uei_prd = predict_rs_yoy(np.array(df['ue_exp_idx_prd'].dropna(how ='any')),
+                                    coefs6)
+rs_yoy_index3 = df['ue_exp_idx_prd'].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df6 = pd.DataFrame(rs_yoy_hat_uei_prd,
+                       columns = ['rs_yoy_hat_uei_prd'],
+                       index = rs_yoy_index3)
+df = pd.merge(df,
+              prd_df6,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+# -
+
+fig = plt.figure(figsize = figsize)
+plt.plot(rs_yoy_index3,
+         np.array(df['retail_yoy'].loc[rs_yoy_index3]),
+         '--',
+         lw = 2, 
+         label = 'realized')
+plt.plot(rs_yoy_index3,
+         rs_yoy_hat_uei_prd,
+         'r-',
+         lw = 2,
+         label='prediction')
+plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.legend(loc = 2)
+plt.savefig('figures/rs_change_predict_realized_uei')
