@@ -94,12 +94,20 @@ ue_exp.index = pd.DatetimeIndex(pd.to_datetime(ue_exp.index,
 ue_exp.index.name = None
 # -
 
+# The index was not in the monthly frequency in the begining of the sample (between 1960-1978). I undertake a linear interpolation to convert it into a monthly series. 
+
+# +
+## linear interpolation 
+ue_exp['UMEX_R'] = ue_exp['UMEX_R'].interpolate()
+
+## plot 
 ue_exp.plot(lw = 3,
             figsize = figsize,
            title = 'unemployment expectation index')
 plt.savefig('figures/ue_exp_idx')
+# -
 
-ue_exp.tail()
+print(ue_exp.iloc[0:20,:])
 
 # ## Unemployement rate
 
@@ -158,7 +166,7 @@ plt.savefig('figures/retail')
 
 # ## Combine all series 
 
-# + {"code_folding": [0, 7, 13]}
+# + {"code_folding": []}
 temp = pd.merge(ue_search,
                 ue_exp,
                 left_index = True,
@@ -204,22 +212,22 @@ ax.plot(df.index,
 ax2.plot(df.index,
          df['ue_exp_idx'],'r--',
          lw = 2, 
-         label = 'unemployment expectation index')
+         label = 'UEI (RHS)')
 ax2.plot(df.index,
          df['Search: \"unemployment insurance\"'],
          'k-.',
          lw = 2, 
-         label = 'google search: unemployment insurance')
+         label = 'search idx: unemployment insurance (RHS)')
 ax2.plot(df.index,
          df['Search: \"unemployment\"'],
          'g-.',
          lw = 2, 
-         label = 'google search: unemployment')
+         label = 'search idx: unemployment (RHS)')
 
 #ax2.plot(df.index,df['Search: \"file for unemployment\"'],'g-.',lw = 1, label = 'google search: file for unemployment')
 ax.set_xlabel("month",fontsize = fontsize)
 ax.set_ylabel('%',fontsize = fontsize)
-ax2.set_ylabel('index (%)',fontsize = fontsize)
+ax2.set_ylabel('index',fontsize = fontsize)
 
 ax.legend(loc = 0,
           fontsize = fontsize)
@@ -300,6 +308,8 @@ plt.plot(df_short1.index,
 plt.plot(ue_exp_idx_prd_index,
          ue_exp_idx_prd,'r--',lw = 2,label=r'$\widehat{UEI}$')
 plt.title('Predicting unemployment expectation using google searches')
+plt.axvline(x = outsample_time,
+            color = 'black')
 plt.text(outsample_time, 80, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/ue_exp_idx_predict')
@@ -321,7 +331,7 @@ df.columns
 # \end{eqnarray}
 #
 
-# ### Model 1 for step 2. Use predicted UEI
+# ### Model 1 for step 2: using $\widehat{\texttt{UEI}}$
 
 # +
 ## ols regression
@@ -381,23 +391,27 @@ df = pd.merge(df,
 # +
 fig = plt.figure(figsize = figsize)
 
-plt.plot(ue_chg_index,
-         np.array(df['ue_chg'].loc[ue_chg_index]), 
+plt.plot(ue_chg_index[:-h],
+         np.array(df['ue_chg'].loc[ue_chg_index][:-h]), 
          '--',
          lw = 2, 
-         label = 'realized')
+         label = 'realization 12 months later')
 plt.plot(ue_chg_index,
          ue_chg_prd,
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting YoY changes of unemployment rate using predicted expectation index')
-plt.text(outsample_time, 1, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.title('Predicting YoY change in unemployment \n rate using predicted UEI')
+plt.axvline(x = outsample_time,
+            color = 'black')
+plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/ue_change_predict_predicted_uei')
 # -
 
-# ### Model 2 for step 2. Use realized UEI
+# Notice the in the figure above, the last observation for 12-month-ahead realization of YoY retail sale growth is Jan 2019. 
+
+# ### Model 2 for step 2: using $\texttt{UEI}$
 
 # + {"code_folding": []}
 ## ols regression
@@ -447,18 +461,20 @@ df = pd.merge(df,
 # -
 
 fig = plt.figure(figsize = figsize)
-plt.plot(ue_chg_index2,
-         np.array(df['ue_chg'].loc[ue_chg_index2]),
+plt.plot(ue_chg_index2[:-h],
+         np.array(df['ue_chg'].loc[ue_chg_index2][:-h]),
          '--',
          lw = 2, 
-         label = 'realized')
+         label = 'realization 12 months later')
 plt.plot(ue_chg_index2,
          ue_chg_prd2,
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting YoY changes of unemployment rate using realized expectation index')
-plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.title('Predicting YoY changes in unemployment \n rate using realized UEI')
+plt.axvline(x = outsample_time,
+            color = 'black')
+plt.text(outsample_time, 1, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
 plt.savefig('figures/ue_change_predict_realized_uei')
 
@@ -536,19 +552,24 @@ df = pd.merge(df,
 # -
 
 fig = plt.figure(figsize = figsize)
-plt.plot(rs_yoy_index,
-         np.array(df['retail_yoy'].loc[rs_yoy_index]),
+plt.plot(rs_yoy_index[:-h],
+         np.array(df['retail_yoy'].loc[rs_yoy_index][:-h]),
          '--',
          lw = 2, 
-         label = 'realized')
+         label = 'realization 12 months later')
 plt.plot(rs_yoy_index,
          rs_yoy_ue_prd,
          'r-',
          lw = 2,
          label='prediction')
 plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.axvline(x = outsample_time,
+            color = 'black')
+plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
 plt.savefig('figures/rs_change_predict_realized_uei')
+
+# Notice in the figure above, both series end in January 2020, the last observation of the available retail sale and unemployment rate data. 
 
 # ### Model 2
 #
@@ -619,8 +640,15 @@ plt.plot(rs_yoy_index2,
          lw = 2,
          label='prediction')
 plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.axvline(x = outsample_time,
+            color = 'black',)
+plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/rs_change_predict_realized_uei')
+
+# Notice in the figure above, both series end in January 2020, the last observation of the available retail sale and unemployment rate data. 
+#
+# Since the interpolated UEI goes back to 1960s, the forecast of unemployment rate for the same period is available.
 
 # ### Model 3 
 #
@@ -629,11 +657,8 @@ plt.savefig('figures/rs_change_predict_realized_uei')
 # \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \widehat{\texttt{UEI}}_{t}  &\text{Using measured UEI data through its end, then forecasted UEI for last couple of months}
 # \end{eqnarray}
 
-# + {"code_folding": [0]}
+# + {"code_folding": []}
 ## retail and unemployment and predicted UEI  
-
-## retail and unemployment and UEI  
-
 
 ## ols regression
 df_short6 = df[['retail_yoy','ue_exp_idx_prd']].dropna(how ='any')
@@ -671,19 +696,26 @@ df = pd.merge(df,
               left_index = True,
               right_index = True,
               how = 'outer')
-# -
 
+# +
 fig = plt.figure(figsize = figsize)
-plt.plot(rs_yoy_index3,
-         np.array(df['retail_yoy'].loc[rs_yoy_index3]),
+plt.plot(rs_yoy_index3[:-h],
+         np.array(df['retail_yoy'].loc[rs_yoy_index3][h:]),  # trucate h  
          '--',
          lw = 2, 
-         label = 'realized')
+         label = 'realization 12 month later')
 plt.plot(rs_yoy_index3,
          rs_yoy_hat_uei_prd,
          'r-',
          lw = 2,
-         label='prediction')
-plt.title('Predicting YoY change in retail sale using realized ue changes')
+         label='prediction for 12-month-ahead')
+plt.title('Predicting YoY change (in next 12 months) \n in retail sale using realized ue changes')
+plt.axvline(x = outsample_time,
+            color = 'black')
+plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
+
 plt.legend(loc = 2)
 plt.savefig('figures/rs_change_predict_realized_uei')
+# -
+
+# Notice the in the figure above, the last observation for 12-month-ahead realization of YoY retail sale growth is Jan 2019. 
