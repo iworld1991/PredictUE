@@ -487,7 +487,7 @@ plt.savefig('figures/ue_change_predict_realized_uei')
 # ## Zoom-in the recent sample 
 # -
 
-df['ue_exp_idx_prd'].tail().plot(title = 'predicted change in UEI')
+df['ue_exp_idx_prd'].tail().plot(title = 'predicted UEI')
 plt.savefig('figures/ue_exp_idx_predict_recent')
 
 df['ue_chg_prd'].tail().plot(title = 'predicted YoY change in unemployment rate')
