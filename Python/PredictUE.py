@@ -299,6 +299,11 @@ df = pd.merge(df,
              left_index = True,
              right_index = True,
              how = 'outer')
+
+## create another series with historical uei in sample and predicted for out of sample
+
+df['ue_exp_idx_long']= df['ue_exp_idx']
+df['ue_exp_idx_long'] = df['ue_exp_idx_long'].fillna(df['ue_exp_idx_prd'])
 # -
 
 outsample_time =  datetime.datetime(2020,2,1)
@@ -445,10 +450,10 @@ print(r2_3)
 # +
 ## predict the UE changes using realized UEI 
 
-ue_chg_prd2 = predict_ue(np.array(df['ue_exp_idx_prd'].dropna(how ='any')),
+ue_chg_prd2 = predict_ue(np.array(df['ue_exp_idx_long'].dropna(how ='any')),
                         coefs3)
 
-ue_chg_index2 = df['ue_exp_idx_prd'].dropna(how ='any').index  # two months in the end are out of sample.
+ue_chg_index2 = df['ue_exp_idx_long'].dropna(how ='any').index  # two months in the end are out of sample.
 
 prd_df3 = pd.DataFrame(ue_chg_prd2,
                        columns = ['ue_chg_prd2'],
@@ -614,9 +619,9 @@ print(r2_5)
 # +
 ## predict the UE changes using realized UEI 
 
-rs_yoy_uei_prd = predict_rs_yoy(np.array(df['ue_exp_idx'].dropna(how ='any')),
+rs_yoy_uei_prd = predict_rs_yoy(np.array(df['ue_exp_idx_long'].dropna(how ='any')),
                                 coefs5)
-rs_yoy_index2 = df['ue_exp_idx'].dropna(how ='any').index  # two months in the end are out of sample.
+rs_yoy_index2 = df['ue_exp_idx_long'].dropna(how ='any').index  # two months in the end are out of sample.
 
 prd_df5 = pd.DataFrame(rs_yoy_uei_prd,
                        columns = ['rs_yoy_uei_prd'],
