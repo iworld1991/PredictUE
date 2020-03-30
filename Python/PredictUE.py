@@ -567,12 +567,12 @@ plt.plot(rs_yoy_index,
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.title('Predicting YoY change in retail sale using realized change in ue')
 plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
-plt.savefig('figures/rs_change_predict_realized_uei')
+plt.savefig('figures/rs_yoy_predict_realized_ue')
 
 # Notice in the figure above, both series end in January 2020, the last observation of the available retail sale and unemployment rate data. 
 
@@ -644,12 +644,12 @@ plt.plot(rs_yoy_index2,
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting YoY change in retail sale using realized ue changes')
+plt.title('Predicting YoY change in retail sale using predicted uei')
 plt.axvline(x = outsample_time,
             color = 'black',)
 plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
-plt.savefig('figures/rs_change_predict_realized_uei')
+plt.savefig('figures/rs_yoy_predict_predicted_uei')
 
 # Notice in the figure above, both series end in January 2020, the last observation of the available retail sale and unemployment rate data. 
 #
@@ -714,13 +714,18 @@ plt.plot(rs_yoy_index3,
          'r-',
          lw = 2,
          label='prediction for 12-month-ahead')
-plt.title('Predicting YoY change (in next 12 months) \n in retail sale using realized ue changes')
+plt.title('Predicting YoY change (in next 12 months) \n in retail sale using predicted UEI')
 plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 
 plt.legend(loc = 2)
-plt.savefig('figures/rs_change_predict_realized_uei')
+plt.savefig('figures/rs_yoy_predict_realized_uei')
 # -
 
 # Notice the in the figure above, the last observation for 12-month-ahead realization of YoY retail sale growth is Jan 2019. 
+
+# ### Zoom-in 
+
+df['rs_yoy_hat_uei_prd'].tail().plot(title = 'predicted YoY change in retail sale 12 months from now')
+plt.savefig('figures/rs_yoy_predict_recent')
