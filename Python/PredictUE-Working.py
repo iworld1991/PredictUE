@@ -67,7 +67,7 @@ ue_search = ue_search[sub_searches]
 ue_search.plot(lw = 3,
                figsize = figsize,
                title = 'google searches of unemployment-related words')
-plt.savefig('figures/search')
+plt.savefig('figures/working/search')
 
 # + {"code_folding": []}
 ## normalize each indicies by its initial value. 
@@ -80,7 +80,7 @@ for search in sub_searches:
 ue_search.plot(lw = 3,
                figsize = figsize,
                title = 'google searches of unemployment-related words (normalized)')
-plt.savefig('figures/search_normalized')
+plt.savefig('figures/working/search_normalized')
 
 
 # +
@@ -109,7 +109,7 @@ plt.plot(ue_exp['UMEX_R'].index,
          'b*-',
          lw = 3)
 plt.title = 'unemployment expectation index'
-plt.savefig('figures/ue_exp_idx')
+plt.savefig('figures/working/ue_exp_idx')
 """
 
 print(ue_exp.iloc[0:20,:])
@@ -128,7 +128,7 @@ ue.index.name = None
 ue.plot(lw = 3,
         figsize = figsize,
         title = 'unemployment rate')
-plt.savefig('figures/ue')
+plt.savefig('figures/working/ue')
 
 # ## Retail series (excluding vehicles and gas) 
 
@@ -167,7 +167,7 @@ retail = retail_pce['retail_yoy']
 retail.plot(lw = 3,
         figsize = figsize,
         title = 'retail growth (YoY)')
-plt.savefig('figures/retail')
+plt.savefig('figures/working/retail')
 
 # ## Combine all series 
 
@@ -238,7 +238,7 @@ ax.legend(loc = 0,
           fontsize = fontsize)
 ax2.legend(loc = 3,
           fontsize = fontsize)
-plt.savefig('figures/all')
+plt.savefig('figures/working/all')
 # -
 # ## Regression
 
@@ -326,7 +326,7 @@ plt.axvline(x = outsample_time,
 plt.text(outsample_time, 80, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.title('Predicting unemployment expectation using google searches')
-plt.savefig('figures/ue_exp_idx_predict')
+plt.savefig('figures/working/ue_exp_idx_predict')
 # Make this an out of sample plot (for the predicted)
 # -
 
@@ -421,7 +421,7 @@ plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
-plt.savefig('figures/ue_change_predict_predicted_uei')
+plt.savefig('figures/working/ue_change_predict_predicted_uei')
 # -
 
 # Notice the in the figure above, the last observation for 12-month-ahead realization of YoY retail sale growth is Jan 2019. 
@@ -491,7 +491,7 @@ plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 1, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
-plt.savefig('figures/ue_change_predict_realized_uei')
+plt.savefig('figures/working/ue_change_predict_realized_uei')
 
 # + {"code_folding": [], "cell_type": "markdown"}
 # ## Zoom-in the recent sample 
@@ -501,7 +501,7 @@ df['ue_exp_idx_prd'].tail().plot(title = 'predicted UEI')
 plt.savefig('figures/ue_exp_idx_predict_recent')
 
 df['ue_chg_prd'].tail().plot(title = 'predicted YoY change in unemployment rate')
-plt.savefig('figures/ue_change_predict_recent')
+plt.savefig('figures/working/ue_change_predict_recent')
 
 # ## Retail and unemployment expectations 
 
@@ -509,7 +509,7 @@ plt.savefig('figures/ue_change_predict_recent')
 #
 # \begin{eqnarray}
 # \newcommand{\Retail}{\texttt{log RS}}
-# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} {U}_{t+12} & \text{Over history to 2019-JAN}
+# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1}({U}_{t+12}-{U_{t}}) & \text{Over history to 2019-JAN}
 # \end{eqnarray}
 #
 # where 
@@ -581,7 +581,7 @@ plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
-plt.savefig('figures/rs_yoy_predict_predicted_ue')
+plt.savefig('figures/working/rs_yoy_predict_predicted_ue')
 # -
 
 # ### Model 1. 
@@ -648,12 +648,12 @@ plt.plot(rs_yoy_index,
          'r-',
          lw = 2,
          label='prediction')
-plt.title('Predicting YoY change in retail sale using prdicted ue')
+plt.title('Predicting YoY change in retail sale using predicted ue')
 plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
-plt.savefig('figures/rs_yoy_predict_predicted_ue')
+plt.savefig('figures/working/rs_yoy_predict_predicted_ue')
 
 # Notice in the figure above, both series end in January 2020, the last observation of the available retail sale and unemployment rate data. 
 
@@ -693,7 +693,7 @@ plt.axvline(x = outsample_time,
             color = 'black')
 plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction
 plt.legend(loc = 2)
-plt.savefig('figures/rs_yoy_predict_predicted2_ue')
+plt.savefig('figures/working/rs_yoy_predict_predicted2_ue')
 # -
 
 df['rs_yoy_ue_prd_x'].tail().plot()
@@ -771,7 +771,7 @@ plt.axvline(x = outsample_time,
             color = 'black',)
 plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
-plt.savefig('figures/rs_yoy_predict_predicted_uei')
+plt.savefig('figures/working/rs_yoy_predict_predicted_uei')
 
 # Notice in the figure above, both series end in January 2020, the last observation of the available retail sale and unemployment rate data. 
 #
@@ -842,7 +842,7 @@ plt.axvline(x = outsample_time,
 plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
 
 plt.legend(loc = 2)
-plt.savefig('figures/rs_yoy_predict_realized_uei')
+plt.savefig('figures/working/rs_yoy_predict_realized_uei')
 # -
 
 # Notice the in the figure above, the last observation for 12-month-ahead realization of YoY retail sale growth is Jan 2019. 
@@ -850,6 +850,4 @@ plt.savefig('figures/rs_yoy_predict_realized_uei')
 # ### Zoom-in 
 
 df['rs_yoy_hat_uei_prd'].tail().plot(title = 'predicted YoY change in retail sale 12 months from now')
-plt.savefig('figures/rs_yoy_predict_recent')
-
-
+plt.savefig('figures/working/rs_yoy_predict_recent')
