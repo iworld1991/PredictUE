@@ -483,7 +483,7 @@ plt.plot(ue_chg_index2[:-h],
          label = 'realization 12 months later')
 plt.plot(ue_chg_index2,
          ue_chg_prd2,
-         'r-',
+         'r*',
          lw = 2,
          label='prediction')
 plt.title('Predicting YoY changes in unemployment \n rate using realized UEI')
