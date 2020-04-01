@@ -130,7 +130,7 @@ ax2.plot(df.index,
 ax.set_xlabel("month",fontsize = fontsize)
 ax.set_ylabel('%',fontsize = fontsize)
 ax2.set_ylabel('index',fontsize = fontsize)
-
+plt.title('Retail sale growth and unemployment rate')
 ax.legend(loc = 0,
           fontsize = fontsize)
 ax2.legend(loc = 3,
@@ -163,6 +163,7 @@ ax.legend(loc = 0,
           fontsize = fontsize)
 ax2.legend(loc = 3,
           fontsize = fontsize)
+plt.title('Retail sale growth and change in unemployment rate')
 plt.savefig('figures/retail_yoy_ue_chg')
 # -
 
@@ -173,7 +174,7 @@ plt.savefig('figures/retail_yoy_ue_chg')
 #
 # \begin{eqnarray}
 # \newcommand{\Retail}{\texttt{log RS}}
-# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} {U}_{t+12} & \text{Over history to 2019-JAN}
+# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} ({U}_{t+12}- {U}_{t})& \text{Over history to 2019-JAN}
 # \end{eqnarray}
 #
 # where 
@@ -233,6 +234,8 @@ df = pd.merge(df,
               how = 'outer')
 
 # + {"code_folding": []}
+## plot prediction and realization 
+
 fig = plt.figure(figsize = figsize)
 plt.plot(rs_yoy_index,
          np.array(df['retail_yoy'].loc[rs_yoy_index]),
@@ -254,10 +257,12 @@ plt.savefig('figures/rs_yoy_predict_ue')
 
 # ## Prediction 
 
-# Let us consider that there will be unemployment rate after the shock, what does it mean to have 
+# Let us consider that the predicted retail sale for a range of unemployment rate in March, 2020
 
 # +
-last_ob_date = datetime.datetime(2019, 3, 1)
+## predict retail sale based on different ue in march 2020
+
+last_ob_date = datetime.datetime(2019, 3, 1) 
 
 
 u_possible = np.array((5,10,15,20,25))
@@ -275,6 +280,8 @@ for i in range(n_possible):
 plt.plot(u_possible,
         rs_yoy_predict)
 plt.title('predicted YoY growth of retail sale')
-plt.xlabel('assumed unemployment rate in March 2020')
+plt.xlabel('assumed unemployment rate in March 2020 (%)')
 plt.ylabel('YoY (%)')
 plt.savefig('figures/predicted_rs_different_ues')
+
+
