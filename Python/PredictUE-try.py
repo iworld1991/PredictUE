@@ -245,7 +245,6 @@ ax2.plot(df.index,
          df['ue_exp_idx'],'r*-',
          lw = 1, 
          label = 'UEI (RHS)')
-
 ax2.plot(df.index,
          df['Search: \"unemployment insurance\"'],
          'k-.',
@@ -274,26 +273,111 @@ ax2.legend(loc = 3,
           fontsize = fontsize)
 plt.savefig('figures/working/all')
 # -
+# ##  Some trys
+#
+# Predict change in uemployment rate changes directly using searches 
+#
+
+# +
+vars_reg = sub_searches + ['ue_chg']
+
+df_short0 = df[vars_reg].dropna(how ='any')
+
+h  = 1
+
+# + {"code_folding": []}
+Y = np.array(df_short0['ue_chg'][h:])
+X = np.array(df_short0[sub_searches][:-h])
+X = sm.add_constant(X)
+model0 = sm.OLS(Y,X)
+results0 = model0.fit()
+print(results0.summary())
+
+## get results
+coefs0 = results0.params
+r2_0 = round(results0.rsquared,3)
+
+print('Coefficients of interest:')
+print(coefs0)
+
+print('R-squared:')
+print(r2_0)
+
+
+def predict_ue_chg(searches,
+                   coefs):
+    nb = searches.shape[1]
+    print(str(nb)+'searches are used')
+    predict_values = coefs[0] 
+    n = 1
+    while n <= nb:
+        predict_values += coefs[n]*searches.T[n-1]
+        n = n+1
+    return predict_values
+
+## predict the UEI using google trends in/out of sample 
+
+ue_exp_chg_search_prd = predict_ue_chg(np.array(df[sub_searches].dropna(how ='any')),
+                                coefs0)
+ue_exp_chg_search_prd_index = df[sub_searches].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df0 = pd.DataFrame(ue_exp_chg_search_prd,
+                      columns = ['ue_exp_chg_search_prd'],
+                      index = ue_exp_chg_search_prd_index)
+ 
+## add the predicted uei to the master dataframe 
+
+df = pd.merge(df,
+             prd_df0,
+             left_index = True,
+             right_index = True,
+             how = 'outer')
+
+## create another series with historical uei in sample and predicted for out of sample
+
+#df['ue_exp_idx_long']= df['ue_exp_idx']
+#df['ue_exp_idx_long'] = df['ue_exp_idx_long'].fillna(df['ue_exp_idx_prd'])
+
+# +
+outsample_time =  datetime.datetime(2020,2,1)
+
+fig = plt.figure(figsize = figsize)
+plt.plot(ue_exp_chg_search_prd_index[:-h],
+         np.array(df['ue_chg'].loc[ue_exp_chg_search_prd_index][h:]),
+                  lw = 2, label = 'ue')
+plt.plot(ue_exp_chg_search_prd_index,
+         ue_exp_chg_search_prd,'r--',lw = 2,label='predicted ue')
+plt.axvline(x = outsample_time,
+            color = 'black')
+plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.legend(loc = 2)
+plt.title('Predicting unemployment expectation using google searches')
+plt.savefig('figures/working/ue_chg_search_predict')
+# Make this an out of sample plot (for the predicted)
+# -
+
+df['ue_exp_chg_search_prd'].tail().plot()
+
 # ## Regression
 
 
-# ### Step 1.  predict michigan index using SCE
+# ### Step 1.  predict michigan index using google search  
 #
 #
 # \begin{eqnarray}
-# \underbrace{\texttt{UEI}_{t}}_{\text{Unemployment expectation index}} = \alpha + \beta \texttt{UEProb}_{t} + \epsilon_{t}
+# \underbrace{\texttt{UEI}_{t}}_{\text{Unemployment expectation index}} = \alpha + \sum^2_{k=1}\beta_k \texttt{Search}_{k,t} + \epsilon_{t}
 # \end{eqnarray}
 #
 # - $\texttt{UEI}$: unemployment expectation index
-# - $\texttt{UEProb}_{t}$: probability of losing the job from SCE
+# - $\texttt{Search}_{k,t}$: google search index for query $k$, e.g. "unemployment insurance", "unemployment office", etc. All indicies are normalized by their initial value at the first period of the sample. 
 
 # +
-vars_reg = ['ue_prob','ue_exp_idx']
+vars_reg = sub_searches + ['ue_exp_idx']
 
 df_short1 = df[vars_reg].dropna(how ='any')
 
 Y = df_short1[['ue_exp_idx']]
-X = df_short1['ue_prob']
+X = df_short1[sub_searches]
 X = sm.add_constant(X)
 model = sm.OLS(Y,X)
 results = model.fit()
@@ -312,18 +396,24 @@ print(r2_1)
 
 
 # + {"code_folding": []}
-def predict_ue_exp(x,
+def predict_ue_exp(searches,
                    coefs):
-    predict_values = coefs[0]+coefs[1]*x
+    nb = searches.shape[1]
+    print(str(nb)+'searches are used')
+    predict_values = coefs[0] 
+    n = 1
+    while n <= nb:
+        predict_values += coefs[n]*searches.T[n-1]
+        n = n+1
     return predict_values
 
 
 # + {"code_folding": []}
 ## predict the UEI using google trends in/out of sample 
 
-ue_exp_idx_prd = predict_ue_exp(np.array(df['ue_prob'].dropna(how ='any')),
+ue_exp_idx_prd = predict_ue_exp(np.array(df[sub_searches].dropna(how ='any')),
                                 coefs1)
-ue_exp_idx_prd_index = df['ue_prob'].dropna(how ='any').index  # two months in the end are out of sample.
+ue_exp_idx_prd_index = df[sub_searches].dropna(how ='any').index  # two months in the end are out of sample.
 
 prd_df = pd.DataFrame(ue_exp_idx_prd,
                       columns = ['ue_exp_idx_prd'],
@@ -343,28 +433,6 @@ df['ue_exp_idx_long']= df['ue_exp_idx']
 df['ue_exp_idx_long'] = df['ue_exp_idx_long'].fillna(df['ue_exp_idx_prd'])
 
 # +
-fig, ax = plt.subplots(figsize = figsize)
-ax2 = ax.twinx()
-ax.plot(df_short1.index,
-        df_short1['ue_exp_idx'],
-        lw =2, 
-        label = 'UEI')
-
-ax2.plot(df_short1.index,
-        df_short1['ue_prob'],
-        'r-',
-        lw =2, 
-        label = 'mean probability of losing a job (SCE)')
-ax.legend(loc = 0,
-          fontsize = fontsize)
-ax2.legend(loc = 2,
-          fontsize = fontsize)
-
-plt.savefig('figures/working/ue_prob_exp_idx')
-
-# +
-## plot prediction and realization 
-
 outsample_time =  datetime.datetime(2020,2,1)
 
 fig = plt.figure(figsize = figsize)
@@ -901,3 +969,5 @@ plt.savefig('figures/working/rs_yoy_predict_realized_uei')
 
 df['rs_yoy_hat_uei_prd'].tail().plot(title = 'predicted YoY change in retail sale 12 months from now')
 plt.savefig('figures/working/rs_yoy_predict_recent')
+
+

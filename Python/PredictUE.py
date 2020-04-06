@@ -96,11 +96,36 @@ retail.plot(lw = 3,
         title = 'retail growth (YoY)')
 plt.savefig('figures/retail')
 
+# ### UE expectations from SCE
+
+ue_prob = pd.read_excel('../Data/SCE.xls',
+                       sheet_name = 'Job separation expectation')
+ue_prob.index = ue_prob['Month']
+
+ue_prob.index = pd.DatetimeIndex(pd.to_datetime(ue_prob.index,
+                                                format = '%Y%m'),
+                                  freq='infer')
+ue_prob.index.name = None
+ue_prob = ue_prob.drop(columns = ['Month',
+                                 'Mean probability of leaving a job voluntarily'])
+ue_prob = ue_prob.rename(columns = {'Mean probability of losing a job':'ue_prob'})
+
+ue_prob.plot(lw = 3,
+        figsize = figsize,
+        title = 'The probability of losing a job')
+plt.savefig('figures/ue_prob')
+
 # ## Combine all series 
 
 # + {"code_folding": []}
-df = pd.merge(ue,
+df0 = pd.merge(ue,
               retail,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+
+df = pd.merge(df0,
+              ue_prob,
               left_index = True,
               right_index = True,
               how = 'outer')
