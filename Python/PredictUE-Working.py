@@ -172,20 +172,27 @@ plt.savefig('figures/working/retail')
 # ### UE expectation from SCE
 
 ue_prob = pd.read_excel('../Data/SCE.xls',
-                       sheet_name = 'Job separation expectation')
+                       sheet_name = 'Unemployment Expectations')
 ue_prob.index = ue_prob['Month']
 
+# +
 ue_prob.index = pd.DatetimeIndex(pd.to_datetime(ue_prob.index,
                                                 format = '%Y%m'),
-                                  freq='infer')
+                                  freq = 'infer')
 ue_prob.index.name = None
-ue_prob = ue_prob.drop(columns = ['Month',
-                                 'Mean probability of leaving a job voluntarily'])
-ue_prob = ue_prob.rename(columns = {'Mean probability of losing a job':'ue_prob'})
+
+ue_prob = ue_prob.rename(columns = {'Mean probability that the U.S. unemployment rate will be higher one year from now':'ue_prob'})
+
+ue_prob = ue_prob.drop(columns = ['Month'])
+
+#ue_prob = ue_prob.drop(columns = ['Month',
+#                                 'Mean probability of leaving a job voluntarily'])
+#ue_prob = ue_prob.rename(columns = {'Mean probability of losing a job':'ue_prob'})
+# -
 
 ue_prob.plot(lw = 3,
         figsize = figsize,
-        title = 'The probability of losing a job')
+        title = 'The probability of higher unemployment rate')
 plt.savefig('figures/ue_prob')
 
 # ## Combine all series 
@@ -354,7 +361,7 @@ ax2.plot(df_short1.index,
         df_short1['ue_prob'],
         'r-',
         lw =2, 
-        label = 'mean probability of losing a job (SCE)')
+        label = 'mean probability of higher UE')
 ax.legend(loc = 0,
           fontsize = fontsize)
 ax2.legend(loc = 2,
@@ -382,6 +389,102 @@ plt.savefig('figures/working/ue_exp_idx_predict')
 # -
 
 df.columns
+
+# ### Step 2.  predict future realized retail sale using UEI
+#
+#
+# - Regression 
+#
+# \begin{eqnarray}
+# \newcommand{\Retail}{\texttt{log RS}}
+# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} + \epsilon_{t} & \text{Over history to 2019-JAN}
+# \end{eqnarray}
+#
+# - Prediction
+#
+# \begin{eqnarray}
+# \newcommand{\Retail}{\texttt{log RS}}
+# \Retail_{t+12} - \Retail_{t}  = & \hat \gamma_{0} + \hat \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2020-March}
+# \end{eqnarray}
+
+# +
+## retail and unemployment and UEI  
+
+
+## ols regression
+df_short5 = df[['retail_yoy','ue_exp_idx']].dropna(how ='any')
+
+## # of months lag 
+############################################################
+h = 12  #by default, next month unemployment rate 
+#############################################################
+
+Y = np.array(df_short5['retail_yoy'][h:])
+X = np.array(df_short5['ue_exp_idx'][:-h])
+X = sm.add_constant(X)
+model5 = sm.OLS(Y,X)
+results5 = model5.fit()
+print(results5.summary())
+
+
+# -
+
+def predict_rs_yoy(ue_or_exp,
+                   coefs):
+    predict_values = coefs[0] + (coefs[1]*ue_or_exp.T)
+    return predict_values
+
+
+# + {"code_folding": []}
+coefs5 = results5.params
+r2_5 = round(results5.rsquared,3)
+
+print('When using realized  UEI')
+print('Estimated coefficients:')
+print(coefs5)
+
+print('R-squared:')
+print(r2_5)
+
+## predict the UE changes using realized UEI 
+
+rs_yoy_uei_prd = predict_rs_yoy(np.array(df['ue_exp_idx_long'].dropna(how ='any')),
+                                coefs5)
+rs_yoy_index2 = df['ue_exp_idx_long'].dropna(how ='any').index  # two months in the end are out of sample.
+
+prd_df5 = pd.DataFrame(rs_yoy_uei_prd,
+                       columns = ['rs_yoy_uei_prd'],
+                       index = rs_yoy_index2)
+df = pd.merge(df,
+              prd_df5,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+
+fig = plt.figure(figsize = figsize)
+plt.plot(rs_yoy_index2[:-h],
+         np.array(df['retail_yoy'].loc[rs_yoy_index2][h:]),
+         '--',
+         lw = 2, 
+         label = 'realized')
+plt.plot(rs_yoy_index2,
+         rs_yoy_uei_prd,
+         'r-',
+         lw = 2,
+         label='prediction')
+plt.title('Predicting YoY change in retail sale using predicted uei')
+plt.axvline(x = outsample_time,
+            color = 'black',)
+plt.text(outsample_time, 1, 'Feb 2020', fontsize = 12)  # mark the out-of-sample prediction 
+plt.legend(loc = 2)
+plt.savefig('figures/working/rs_yoy_predict_predicted_uei')
+# -
+
+## zoom in
+df['rs_yoy_uei_prd'].tail().plot()
+plt.savefig('figures/working/rs_yoy_predict_recent')
+
+# ## All below are old codes !!!
 
 # ### Step 2.  predict future realized unemployment rate change using expectations 
 
@@ -469,7 +572,7 @@ plt.plot(ue_chg_index,
 plt.title('Predicting YoY change in unemployment \n rate using predicted UEI')
 plt.axvline(x = outsample_time,
             color = 'black')
-plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
+#plt.text(outsample_time, 2, 'Feb/Mar 2020', fontsize = 12)  # mark the out-of-sample prediction 
 plt.legend(loc = 2)
 plt.savefig('figures/working/ue_change_predict_predicted_uei')
 # -
@@ -787,6 +890,7 @@ print(coefs5)
 
 print('R-squared:')
 print(r2_5)
+
 
 # +
 ## predict the UE changes using realized UEI 
