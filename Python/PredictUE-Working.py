@@ -441,26 +441,19 @@ df.columns
 # ### Step 2.  predict future realized retail sale using UEI
 #
 #
-# - Regression 
-#
 # \begin{eqnarray}
 # \newcommand{\Retail}{\texttt{log RS}}
-# \Retail_{t+12} - \Retail_{t}  = & \gamma_{0} + \gamma_{1} \texttt{UEI}_{t} + \epsilon_{t} & \text{Over history to 2019-JAN}
+# \Retail_{t+12} - \Retail_{t}  = & \hat \gamma_{0} + \hat \gamma_{1} \widehat{\texttt{UEI}_{t}} & \text{over the history to 2020-March}
 # \end{eqnarray}
 #
-# - Prediction
-#
-# \begin{eqnarray}
-# \newcommand{\Retail}{\texttt{log RS}}
-# \Retail_{t+12} - \Retail_{t}  = & \hat \gamma_{0} + \hat \gamma_{1} \texttt{UEI}_{t} & \text{Over history to 2020-March}
-# \end{eqnarray}
+# - $\widehat{\texttt{UEI}_{t}}$ is the instrumented UEI predicted by step 1.
 
 # +
 ## retail and unemployment and UEI  
 
 
 ## ols regression
-df_short5 = df[['retail_yoy','ue_exp_idx']].dropna(how ='any')
+df_short5 = df[['retail_yoy','ue_exp_idx_long']].dropna(how ='any')
 
 ## # of months lag 
 ############################################################
@@ -468,7 +461,7 @@ h = 12  #by default, next month unemployment rate
 #############################################################
 
 Y = np.array(df_short5['retail_yoy'][h:])
-X = np.array(df_short5['ue_exp_idx'][:-h])
+X = np.array(df_short5['ue_exp_idx_long'][:-h])
 X = sm.add_constant(X)
 model5 = sm.OLS(Y,X)
 results5 = model5.fit()
@@ -487,7 +480,7 @@ def predict_rs_yoy(ue_or_exp,
 coefs5 = results5.params
 r2_5 = round(results5.rsquared,3)
 
-print('When using realized  UEI')
+print('When using predicted  UEI')
 print('Estimated coefficients:')
 print(coefs5)
 
