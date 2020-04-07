@@ -220,7 +220,7 @@ plt.savefig('figures/ue_prob')
 
 # ## Combine all series 
 
-# + {"code_folding": []}
+# + {"code_folding": [0]}
 temp = pd.merge(ue_search,
                 ue_exp,
                 left_index = True,
@@ -256,14 +256,15 @@ df = pd.merge(ic,
 # + {"code_folding": []}
 df = df.rename(columns = {'UNRATE':'ue',
                           'UMEX_R':'ue_exp_idx',
-                          'icsa':'ic'})
+                          'ICSA':'ic'})
 
 df['ue_chg'] = df['ue'].diff(periods = 12) ## yoy change of unemployment rate 
+df['lic_chg'] = np.log(df['ic']).diff(periods = 12) ## yoy change of unemployment rate 
 # -
 
 df.columns
 
-# + {"code_folding": []}
+# + {"code_folding": [15, 20, 25, 30, 36]}
 ## plot all series 
 
 fig, ax = plt.subplots(figsize = figsize)
@@ -278,6 +279,11 @@ ax.plot(df.index,
         'b-',
         lw =2, 
         label = 'retail yoy')
+
+ax.plot(df.index,
+        df['ic'],
+        lw =2, 
+        label = 'log ic change')
 
 ax2.plot(df.index,
          df['ue_exp_idx'],'r*-',
@@ -299,7 +305,7 @@ ax2.plot(df.index,
          df['ue_prob'],
          'y-',
          lw = 2, 
-         label = 'probability of losing a job')
+         label = 'probability of losing a job (RHS)')
 
 #ax2.plot(df.index,df['Search: \"file for unemployment\"'],'g-.',lw = 1, label = 'google search: file for unemployment')
 ax.set_xlabel("month",fontsize = fontsize)
@@ -319,19 +325,19 @@ plt.savefig('figures/working/all')
 #
 #
 # \begin{eqnarray}
-# \underbrace{\texttt{UEI}_{t}}_{\text{Unemployment expectation index}} = \alpha + \beta \texttt{UEProb}_{t} + \epsilon_{t}
+# \underbrace{\texttt{UEI}_{t}}_{\text{Unemployment expectation index}} = \alpha + \beta_1 \texttt{UEProb}_{t} + \beta_2 \Delta \texttt{log(IC)}_{t} + \beta_3 \Delta \texttt{UE}_{t}+ \epsilon_{t}
 # \end{eqnarray}
 #
 # - $\texttt{UEI}$: unemployment expectation index
 # - $\texttt{UEProb}_{t}$: probability of losing the job from SCE
 
 # +
-vars_reg = ['ue_prob','ue_exp_idx']
+vars_reg = ['ue_prob','ue','lic_chg','ue_exp_idx']
 
 df_short1 = df[vars_reg].dropna(how ='any')
 
 Y = df_short1[['ue_exp_idx']]
-X = df_short1['ue_prob']
+X = df_short1[['ue_prob','ue','lic_chg']]
 X = sm.add_constant(X)
 model = sm.OLS(Y,X)
 results = model.fit()
@@ -352,14 +358,25 @@ print(r2_1)
 # + {"code_folding": []}
 def predict_ue_exp(x,
                    coefs):
-    predict_values = coefs[0]+coefs[1]*x
+    nb = x.shape[1]
+    print(str(nb)+' variables are used')
+    predict_values = coefs[0] 
+    n = 1
+    while n <= nb:
+        predict_values += coefs[n]*x.T[n-1]
+        n = n+1
     return predict_values
+
+#def predict_ue_exp(x,
+#                   coefs):
+#    predict_values = coefs[0]+coefs[1]*x
+#    return predict_values
 
 
 # + {"code_folding": []}
 ## predict the UEI using google trends in/out of sample 
 
-ue_exp_idx_prd = predict_ue_exp(np.array(df['ue_prob'].dropna(how ='any')),
+ue_exp_idx_prd = predict_ue_exp(np.array(df[['ue_prob','ue','lic_chg']].dropna(how ='any')),
                                 coefs1)
 ue_exp_idx_prd_index = df['ue_prob'].dropna(how ='any').index  # two months in the end are out of sample.
 
@@ -391,7 +408,7 @@ ax.plot(df_short1.index,
 ax2.plot(df_short1.index,
         df_short1['ue_prob'],
         'r-',
-        lw =2, 
+        lw = 2, 
         label = 'mean probability of higher UE')
 ax.legend(loc = 0,
           fontsize = fontsize)
