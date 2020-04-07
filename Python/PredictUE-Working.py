@@ -117,7 +117,7 @@ print(ue_exp.iloc[0:20,:])
 # ## Unemployement rate
 
 start = datetime.datetime(1960, 1, 30)
-end = datetime.datetime(2020, 3, 30)
+end = datetime.datetime(2020, 4, 30)
 ue = web.DataReader('UNRATE', 'fred', start, end)
 
 ue.index = pd.DatetimeIndex(pd.to_datetime(ue.index,
@@ -169,6 +169,29 @@ retail.plot(lw = 3,
         title = 'retail growth (YoY)')
 plt.savefig('figures/working/retail')
 
+# ### Initial claims 
+
+# +
+start = datetime.datetime(1960, 1, 30)
+end = datetime.datetime(2020, 4, 30)
+ic = web.DataReader('ICSA', 'fred', start, end)
+
+
+ic.index = pd.DatetimeIndex(pd.to_datetime(ic.index,
+                                           format = '%Y-%m-%d'),
+                                  freq = 'infer')
+ic = ic.resample('M').last()
+ic.index = ic.index.shift(-1,freq='M')
+ic.index = ic.index.shift(1,freq='D')
+
+ic.index.name = None
+
+ic.plot(lw = 3,
+        figsize = figsize,
+        title = 'initial claims')
+plt.savefig('figures/working/ic')
+# -
+
 # ### UE expectation from SCE
 
 ue_prob = pd.read_excel('../Data/SCE.xls',
@@ -217,15 +240,23 @@ df0 = pd.merge(uedf,
               right_index = True,
               how = 'outer')
 
-df = pd.merge(ue_prob,
+df1 = pd.merge(ue_prob,
               df0,
+              left_index = True,
+              right_index = True,
+              how = 'outer')
+
+
+df = pd.merge(ic,
+              df1,
               left_index = True,
               right_index = True,
               how = 'outer')
 
 # + {"code_folding": []}
 df = df.rename(columns = {'UNRATE':'ue',
-                          'UMEX_R':'ue_exp_idx'})
+                          'UMEX_R':'ue_exp_idx',
+                          'icsa':'ic'})
 
 df['ue_chg'] = df['ue'].diff(periods = 12) ## yoy change of unemployment rate 
 # -
