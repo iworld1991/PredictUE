@@ -510,7 +510,7 @@ plt.plot(rs_yoy_index2[:-h],
          label = 'realized')
 plt.plot(rs_yoy_index2,
          rs_yoy_uei_prd,
-         'r-',
+         'r*',
          lw = 2,
          label='prediction')
 plt.title('Predicting YoY change in retail sale using predicted uei')
